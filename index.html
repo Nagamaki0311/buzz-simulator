@@ -11,7 +11,8 @@
 
   <!-- ヘッダー -->
   <header class="app-header">
-    <h1>🚀 バズシミュレーター</h1>
+    <div class="header-side"></div>
+    <div class="brand-mark" aria-label="Buzz Simulator">B</div>
     <div class="header-actions">
       <button id="sound-toggle" class="icon-btn" title="通知音のON/OFF">🔊</button>
       <button id="theme-toggle" class="icon-btn" title="ダーク/ライト切替">🌙</button>
@@ -97,15 +98,33 @@
   <!-- タブバー -->
   <nav id="tabbar" class="tabbar">
     <button class="tab active" data-tab="home">
-      <span class="tab-icon">🏠</span><span>ホーム</span>
+      <span class="tab-icon-wrap">
+        <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3.5 11 12 4l8.5 7"/>
+          <path d="M5.5 9.8V19a1 1 0 0 0 1 1h4v-6h3v6h4a1 1 0 0 0 1-1V9.8"/>
+        </svg>
+      </span>
+      <span class="tab-label">ホーム</span>
     </button>
     <button class="tab" data-tab="notifications">
-      <span class="tab-icon">🔔</span><span>通知</span>
-      <span class="badge" id="badge-notif">0</span>
+      <span class="tab-icon-wrap">
+        <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6.5 8.5a5.5 5.5 0 0 1 11 0c0 4.2 1.4 5.6 1.9 6.6a.6.6 0 0 1-.5.9H5.1a.6.6 0 0 1-.5-.9c.5-1 1.9-2.4 1.9-6.6Z"/>
+          <path d="M10.2 19a1.9 1.9 0 0 0 3.6 0"/>
+        </svg>
+        <span class="badge" id="badge-notif">0</span>
+      </span>
+      <span class="tab-label">通知</span>
     </button>
     <button class="tab" data-tab="dm">
-      <span class="tab-icon">✉️</span><span>DM</span>
-      <span class="badge" id="badge-dm">0</span>
+      <span class="tab-icon-wrap">
+        <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3.5" y="5.5" width="17" height="13" rx="2.2"/>
+          <path d="M4.3 7 12 12.5 19.7 7"/>
+        </svg>
+        <span class="badge" id="badge-dm">0</span>
+      </span>
+      <span class="tab-label">DM</span>
     </button>
   </nav>
 

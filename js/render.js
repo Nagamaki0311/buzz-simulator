@@ -124,6 +124,7 @@ const Render = (() => {
 
     setTheme(theme) {
       els.app.dataset.theme = theme;
+      document.documentElement.dataset.theme = theme; // color-scheme等をhtml要素側にも反映させる保険
     },
 
     switchScreen,

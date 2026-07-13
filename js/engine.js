@@ -103,40 +103,45 @@ const Engine = (() => {
   }
 
   // ---------- 1イベント発生 ----------
+  // 通知全体の内訳: A通知(いいね/リポスト/フォロー) 83% / B通知(返信/引用) 12% / C通知(DM) 5%
+  const ICON_MAP = { like: "❤️", repost: "🔁", follow: "➕", reply: "💬", quote: "🔁" };
+
   function emitEvent() {
     const now = Date.now();
     State.totalNotifications++;
 
-    // このイベント種別を抽選: 一般通知70% / 返信22% / DM8%
     const roll = Math.random();
-    if (roll < 0.70) {
+    if (roll < 0.83) {
+      // ---- A通知: いいね / リポスト / フォロー ----
       const tpl = weightedPick(data.notifTemplates, t => t.weight);
       const user = randomUser();
       const text = tpl.text.replace("{name}", user.name);
-      const iconMap = { like: "❤️", repost: "🔁", quote: "🔁", follow: "➕", share: "📤", replyPing: "💬" };
 
       if (tpl.type === "like") State.likes++;
-      else if (tpl.type === "repost" || tpl.type === "quote") State.reposts++;
-      else if (tpl.type === "replyPing") State.replies++;
+      else if (tpl.type === "repost") State.reposts++;
+      // followはホーム画面のカウンターには反映しない（実際のSNSでも別集計のため）
 
       Render.pushNotification({
         id: now + "-" + Math.random(),
-        kind: "notif",
-        icon: iconMap[tpl.type] || "🔔",
+        kind: tpl.type,
+        icon: ICON_MAP[tpl.type] || "🔔",
         user, text,
         time: now
       });
-    } else if (roll < 0.92) {
+    } else if (roll < 0.95) {
+      // ---- B通知: 返信 / 引用（同じリアクション文プールを共有） ----
+      const isQuote = Math.random() < 0.35; // 引用は返信よりやや少なめ
       const { category, text } = pickReply();
       State.replies++;
+      if (isQuote) State.reposts++; // 引用はリポスト数にも計上（実際のSNS挙動に合わせる）
       State.replyCategoryCount[category] = (State.replyCategoryCount[category] || 0) + 1;
       const user = randomUser();
       Render.pushNotification({
         id: now + "-" + Math.random(),
-        kind: "reply",
-        icon: "💬",
+        kind: isQuote ? "quote" : "reply",
+        icon: isQuote ? ICON_MAP.quote : ICON_MAP.reply,
         user,
-        text: `返信: ${text}`,
+        text: isQuote ? `引用: ${text}` : `返信: ${text}`,
         time: now
       });
     } else {

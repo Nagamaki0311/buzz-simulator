@@ -1,25 +1,17 @@
 {
-  "_comment": "{name}はnames.jsonのユーザー名に置換される。typeはlike/repost/quote/follow/share/replyPingのいずれか。weightは出現しやすさ（大きいほど頻出）。テンプレート数×ユーザー数の掛け合わせで数百通り以上のバリエーションになる。",
+  "_comment": "A通知専用のテンプレート。typeはlike/repost/followの3種類のみに限定。weightは出現しやすさ（大きいほど頻出）。いいねが最も高頻度になるよう重みを調整している。{name}はnames.jsonのユーザー名に置換される。",
   "templates": [
-    { "type": "like", "text": "{name}さんがいいねしました", "weight": 10 },
-    { "type": "like", "text": "{name}さんが投稿に共感しました", "weight": 4 },
-    { "type": "repost", "text": "{name}さんがリポストしました", "weight": 6 },
+    { "type": "like", "text": "{name}さんがいいねしました", "weight": 14 },
+    { "type": "like", "text": "{name}さんが「いいね」を押しました", "weight": 7 },
+    { "type": "like", "text": "{name}さんが投稿にいいねしました", "weight": 6 },
+    { "type": "like", "text": "{name}さん他 数十人がいいねしました", "weight": 3 },
+
+    { "type": "repost", "text": "{name}さんがリポストしました", "weight": 7 },
     { "type": "repost", "text": "{name}さんが投稿を拡散しました", "weight": 3 },
-    { "type": "quote", "text": "{name}さんが引用しました", "weight": 4 },
-    { "type": "quote", "text": "{name}さんがコメント付きでリポストしました", "weight": 2 },
+    { "type": "repost", "text": "{name}さん他がリポストしました", "weight": 2 },
+
     { "type": "follow", "text": "{name}さんがフォローしました", "weight": 5 },
     { "type": "follow", "text": "{name}さんがあなたをフォローしました", "weight": 3 },
-    { "type": "share", "text": "{name}さんがあなたの投稿を共有しました", "weight": 3 },
-    { "type": "share", "text": "{name}さんが投稿をブックマークしました", "weight": 3 },
-    { "type": "replyPing", "text": "{name}さんが返信しました", "weight": 6 },
-    { "type": "replyPing", "text": "{name}さんがあなたの投稿にコメントしました", "weight": 3 },
-    { "type": "like", "text": "{name}さんが「いいね」を押しました", "weight": 4 },
-    { "type": "repost", "text": "{name}さんが友人にシェアしました", "weight": 2 },
-    { "type": "follow", "text": "{name}さんが新しくフォロワーになりました", "weight": 2 },
-    { "type": "quote", "text": "{name}さんが「これ見て」と引用しました", "weight": 1 },
-    { "type": "share", "text": "{name}さんがDMで転送しました", "weight": 1 },
-    { "type": "like", "text": "{name}さん他 数十人がいいねしました", "weight": 2 },
-    { "type": "repost", "text": "{name}さん他がリポストしました", "weight": 2 },
-    { "type": "share", "text": "{name}さんがスクリーンショットを保存しました", "weight": 1 }
+    { "type": "follow", "text": "{name}さんが新しくフォロワーになりました", "weight": 2 }
   ]
 }
