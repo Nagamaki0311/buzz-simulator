@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<title>ドーパミン大放出！バズシミュレーター</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app" data-theme="light">
+
+  <!-- ヘッダー -->
+  <header class="app-header">
+    <h1>🚀 バズシミュレーター</h1>
+    <div class="header-actions">
+      <button id="sound-toggle" class="icon-btn" title="通知音のON/OFF">🔊</button>
+      <button id="theme-toggle" class="icon-btn" title="ダーク/ライト切替">🌙</button>
+    </div>
+  </header>
+
+  <!-- 進行度バー（シミュレーション中のみ表示） -->
+  <div class="progress-track"><div id="progress-fill" class="progress-fill"></div></div>
+  <div id="status-strip" class="status-strip" style="display:none;">
+    <span>経過を確認中…</span>
+    <span class="timer" id="timer-label">15:00</span>
+  </div>
+
+  <!-- ホーム画面 -->
+  <section id="screen-home" class="screen">
+    <div id="composer" class="composer">
+      <textarea id="post-input" maxlength="140" placeholder="いまどうしてる？（投稿するとバズが始まります）"></textarea>
+      <div class="composer-footer">
+        <button id="post-btn" class="post-btn" disabled>投稿する</button>
+      </div>
+    </div>
+
+    <div id="my-post" class="my-post" style="display:none;">
+      <div class="post-card">
+        <div class="avatar" id="my-avatar" style="background:#1d9bf0;">🙂</div>
+        <div class="post-body">
+          <div class="post-name-row">
+            <span class="post-name">あなた</span>
+            <span class="post-handle">@you</span>
+          </div>
+          <div class="post-text" id="my-post-text"></div>
+          <div class="post-stats">
+            <div class="stat reply"><span>💬</span><span class="num" id="stat-reply">0</span></div>
+            <div class="stat repost"><span>🔁</span><span class="num" id="stat-repost">0</span></div>
+            <div class="stat like"><span>❤️</span><span class="num" id="stat-like">0</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="home-hint" class="hint">投稿すると、通知が押し寄せてくる様子を体験できます。</div>
+  </section>
+
+  <!-- 通知画面 -->
+  <section id="screen-notifications" class="screen hidden">
+    <div id="notif-list"></div>
+    <div id="notif-empty" class="empty-state">まだ通知はありません</div>
+  </section>
+
+  <!-- DM画面 -->
+  <section id="screen-dm" class="screen hidden">
+    <div id="dm-list"></div>
+    <div id="dm-empty" class="empty-state">まだメッセージはありません</div>
+  </section>
+
+  <!-- リザルト画面 -->
+  <section id="screen-result" class="screen hidden">
+    <div class="result-wrap">
+      <div style="font-size:13px;color:var(--text-sub);">今回のバズ結果</div>
+      <div id="result-rank" class="result-rank">S</div>
+      <div class="result-sub" id="result-sub">お疲れさまでした</div>
+
+      <div class="result-grid">
+        <div class="result-card"><div class="label">表示回数</div><div class="value" id="r-impressions">0</div></div>
+        <div class="result-card"><div class="label">総いいね</div><div class="value" id="r-likes">0</div></div>
+        <div class="result-card"><div class="label">総リポスト</div><div class="value" id="r-reposts">0</div></div>
+        <div class="result-card"><div class="label">総返信</div><div class="value" id="r-replies">0</div></div>
+        <div class="result-card"><div class="label">総DM</div><div class="value" id="r-dms">0</div></div>
+        <div class="result-card"><div class="label">通知総数</div><div class="value" id="r-total">0</div></div>
+        <div class="result-card"><div class="label">ピーク通知速度</div><div class="value" id="r-peak">0/秒</div></div>
+        <div class="result-card"><div class="label">推定トレンド順位</div><div class="value" id="r-trend">-</div></div>
+      </div>
+
+      <div class="result-note">
+        <div class="row"><span>最も多かった返信タイプ</span><span id="r-top-reply">-</span></div>
+        <div class="row"><span>最も多かったDMカテゴリ</span><span id="r-top-dm">-</span></div>
+      </div>
+
+      <button id="restart-btn" class="primary-btn">もう一度あそぶ</button>
+    </div>
+  </section>
+
+  <!-- タブバー -->
+  <nav id="tabbar" class="tabbar">
+    <button class="tab active" data-tab="home">
+      <span class="tab-icon">🏠</span><span>ホーム</span>
+    </button>
+    <button class="tab" data-tab="notifications">
+      <span class="tab-icon">🔔</span><span>通知</span>
+      <span class="badge" id="badge-notif">0</span>
+    </button>
+    <button class="tab" data-tab="dm">
+      <span class="tab-icon">✉️</span><span>DM</span>
+      <span class="badge" id="badge-dm">0</span>
+    </button>
+  </nav>
+
+  <!-- スタート案内オーバーレイ -->
+  <div id="start-overlay" class="overlay">
+    <div class="big-emoji">📈</div>
+    <h2>バズる瞬間を疑似体験</h2>
+    <p>
+      投稿すると、いいね・リポスト・返信・DMが際限なく届き始めます。<br>
+      通知を確認したくなる衝動そのものが、このシミュレーターの体験です。<br>
+      15分後、通知は前触れなく止まります。
+    </p>
+    <button id="overlay-start-btn" class="primary-btn">はじめる</button>
+  </div>
+
+</div>
+
+<script src="js/state.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/render.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
