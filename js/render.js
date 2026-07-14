@@ -356,9 +356,9 @@ const Render = (() => {
 
       let rank = "S";
       const score = State.totalNotifications;
-      if (score > 4000000) rank = "LEGEND";
-      else if (score > 1500000) rank = "SSS";
-      else if (score > 600000) rank = "SS";
+      if (score > 2600) rank = "LEGEND";
+      else if (score > 2100) rank = "SSS";
+      else if (score > 1700) rank = "SS";
       else rank = "S";
 
       document.getElementById("result-rank").textContent = rank;
@@ -376,7 +376,7 @@ const Render = (() => {
       document.getElementById("r-total").textContent = formatCount(State.totalNotifications);
       document.getElementById("r-peak").textContent = `${formatCount(State.peakNotifPerSec)}/秒`;
       document.getElementById("r-trend").textContent =
-        score > 1500000 ? "1位" : score > 600000 ? `${Math.ceil(Math.random() * 5) + 1}位` : `${Math.ceil(Math.random() * 20) + 5}位`;
+        score > 2100 ? "1位" : score > 1700 ? `${Math.ceil(Math.random() * 5) + 1}位` : `${Math.ceil(Math.random() * 20) + 5}位`;
 
       document.getElementById("r-top-reply").textContent = topReplyCat && topReplyCat[1] > 0 ? catLabelMap[topReplyCat[0]] : "-";
       document.getElementById("r-top-dm").textContent = topDmCat && topDmCat[1] > 0 ? topDmCat[0] : "-";

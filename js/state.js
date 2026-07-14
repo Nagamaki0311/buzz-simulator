@@ -24,7 +24,6 @@ const State = {
 
   // 統計（リザルト用）
   totalNotifications: 0,
-  targetTotal: 0,        // このセッションで目標とした通知総数（34万〜620万の範囲＋文字数ボーナス）
   peakNotifPerSec: 0,
   replyCategoryCount: { empathy: 0, normal: 0, discussion: 0, negative: 0, meme: 0 },
   dmCategoryCount: {},
@@ -46,7 +45,6 @@ const State = {
     this.unreadCount = 0;
     this.dmTotal = 0;
     this.totalNotifications = 0;
-    this.targetTotal = 0;
     this.peakNotifPerSec = 0;
     this.replyCategoryCount = { empathy: 0, normal: 0, discussion: 0, negative: 0, meme: 0 };
     this.dmCategoryCount = {};
