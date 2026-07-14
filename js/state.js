@@ -14,16 +14,17 @@ const State = {
   likes: 0,
   reposts: 0,
   replies: 0,
+  follows: 0,      // フォロー数（マイルストーン判定・結果画面用。ホームの3指標には非表示）
 
-  // 通知タブの状態
-  notifications: [],   // 表示済み通知の配列（新しい順）
+  // 通知タブの状態（画面には代表サンプルのみ保持。合計は totalNotifications 等で別管理）
   unreadCount: 0,
 
-  // DMタブの状態
-  dms: [],
+  // DM関連
+  dmTotal: 0,       // DM総数（正確な集計値。表示DOMの件数とは独立）
 
   // 統計（リザルト用）
   totalNotifications: 0,
+  targetTotal: 0,        // このセッションで目標とした通知総数（34万〜620万の範囲＋文字数ボーナス）
   peakNotifPerSec: 0,
   replyCategoryCount: { empathy: 0, normal: 0, discussion: 0, negative: 0, meme: 0 },
   dmCategoryCount: {},
@@ -41,10 +42,11 @@ const State = {
     this.likes = 0;
     this.reposts = 0;
     this.replies = 0;
-    this.notifications = [];
+    this.follows = 0;
     this.unreadCount = 0;
-    this.dms = [];
+    this.dmTotal = 0;
     this.totalNotifications = 0;
+    this.targetTotal = 0;
     this.peakNotifPerSec = 0;
     this.replyCategoryCount = { empathy: 0, normal: 0, discussion: 0, negative: 0, meme: 0 };
     this.dmCategoryCount = {};

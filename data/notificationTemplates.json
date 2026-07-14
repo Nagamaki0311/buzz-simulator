@@ -1,17 +1,8 @@
 {
-  "_comment": "A通知専用のテンプレート。typeはlike/repost/followの3種類のみに限定。weightは出現しやすさ（大きいほど頻出）。いいねが最も高頻度になるよう重みを調整している。{name}はnames.jsonのユーザー名に置換される。",
+  "_comment": "A通知（いいね/リポスト/フォロー）の文言を実際の通知に近い形へ統一。1種類につき1文言のみとし、weightで出現頻度を制御する。いいねの重みを大きくして最も出やすくしている。{name}はnames.jsonのユーザー名に置換される。",
   "templates": [
-    { "type": "like", "text": "{name}さんがいいねしました", "weight": 14 },
-    { "type": "like", "text": "{name}さんが「いいね」を押しました", "weight": 7 },
-    { "type": "like", "text": "{name}さんが投稿にいいねしました", "weight": 6 },
-    { "type": "like", "text": "{name}さん他 数十人がいいねしました", "weight": 3 },
-
-    { "type": "repost", "text": "{name}さんがリポストしました", "weight": 7 },
-    { "type": "repost", "text": "{name}さんが投稿を拡散しました", "weight": 3 },
-    { "type": "repost", "text": "{name}さん他がリポストしました", "weight": 2 },
-
-    { "type": "follow", "text": "{name}さんがフォローしました", "weight": 5 },
-    { "type": "follow", "text": "{name}さんがあなたをフォローしました", "weight": 3 },
-    { "type": "follow", "text": "{name}さんが新しくフォロワーになりました", "weight": 2 }
+    { "type": "like",   "text": "{name}さんがあなたのポストをいいねしました", "weight": 70 },
+    { "type": "repost", "text": "{name}さんがあなたのポストをリポストしました", "weight": 20 },
+    { "type": "follow", "text": "{name}さんがあなたをフォローしました", "weight": 10 }
   ]
 }

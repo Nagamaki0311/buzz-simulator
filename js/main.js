@@ -37,9 +37,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   // ---------- 投稿フォーム ----------
+  const charCountEl = document.getElementById("char-count");
   Render.bindPostInput(() => {
     const val = Render.getPostInputValue();
     Render.getPostBtn().disabled = val.length === 0;
+    charCountEl.textContent = `${val.length}/40`;
   });
 
   Render.bindPostBtn(() => {

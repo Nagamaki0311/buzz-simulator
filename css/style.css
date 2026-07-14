@@ -130,6 +130,7 @@ body {
   -webkit-overflow-scrolling: touch;
   scroll-behavior: smooth;
   padding-bottom: 70px;
+  position: relative;
 }
 .screen.hidden { display: none; }
 
@@ -311,14 +312,6 @@ body {
   font-size: 14px;
 }
 
-/* ---------- ホーム未投稿時 ---------- */
-.hint {
-  padding: 40px 20px;
-  text-align: center;
-  color: var(--text-sub);
-  font-size: 14px;
-}
-
 /* ---------- スタートオーバーレイ ---------- */
 .overlay {
   position: absolute;
@@ -334,9 +327,52 @@ body {
   padding: 24px;
 }
 .overlay .big-emoji { font-size: 46px; }
-.overlay h2 { margin: 0; font-size: 20px; }
-.overlay p { margin: 0; color: var(--text-sub); font-size: 14px; line-height: 1.6; max-width: 320px; }
 .overlay.hidden { display: none; }
+
+.overlay-mark {
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+  background: var(--accent);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  font-weight: 800;
+  font-family: Georgia, "Hiragino Mincho ProN", serif;
+  animation: markPulse 3.2s ease-in-out infinite;
+}
+@keyframes markPulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.06); opacity: 0.88; }
+}
+
+.breathe-text-wrap {
+  position: relative;
+  height: 24px;
+  width: 100%;
+  max-width: 300px;
+}
+.breathe-text {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-sub);
+  font-size: 14px;
+  opacity: 0;
+  animation: breathe 7s ease-in-out infinite;
+}
+#breathe-2 { animation-delay: 3.5s; }
+@keyframes breathe {
+  0%   { opacity: 0; }
+  12%  { opacity: 1; }
+  45%  { opacity: 1; }
+  58%  { opacity: 0; }
+  100% { opacity: 0; }
+}
 
 .primary-btn {
   background: var(--accent);
@@ -360,18 +396,7 @@ body {
   cursor: pointer;
 }
 
-/* ---------- ステータスバー（進行状況） ---------- */
-.status-strip {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 14px;
-  font-size: 12px;
-  color: var(--text-sub);
-  border-bottom: 1px solid var(--border);
-  background: var(--bg-elevated);
-}
-.status-strip .timer { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--text); }
+/* ---------- 進行度バー ---------- */
 .progress-track {
   height: 3px;
   background: var(--border);
@@ -475,5 +500,90 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-/* スクロールバー非表示（モバイル感を優先） */
+/* ---------- 文字数カウンター ---------- */
+.char-count {
+  font-size: 12px;
+  color: var(--text-sub);
+  margin-right: auto;
+  font-variant-numeric: tabular-nums;
+}
+.composer-footer { justify-content: space-between; }
+
+/* ---------- 返信・引用の表示補助 ---------- */
+.sub-handle { color: var(--text-sub); font-weight: 400; }
+.reply-line .reply-to { color: var(--accent); font-weight: 600; margin-right: 2px; }
+
+/* ---------- 引用ポスト（B通知：引用） ---------- */
+.quote-comment {
+  font-size: 14px;
+  margin: 4px 0 8px;
+  line-height: 1.5;
+}
+.quote-embed {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: var(--bg-elevated);
+}
+.quote-embed-head {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-sub);
+  margin-bottom: 3px;
+}
+.quote-embed-text {
+  font-size: 14px;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+/* ---------- ホーム画面：引用ポスト欄 ---------- */
+.home-quotes {
+  border-top: 8px solid var(--border);
+  padding-top: 4px;
+}
+.home-quotes.hidden { display: none; }
+.home-quotes-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-sub);
+  padding: 12px 14px 4px;
+}
+
+/* ---------- マイルストーン通知（複数人まとめ表示） ---------- */
+.milestone-item { background: var(--accent-soft); }
+.avatar-stack { display: flex; flex-shrink: 0; padding-left: 6px; }
+.avatar-stack .avatar {
+  width: 30px; height: 30px; font-size: 14px;
+  margin-left: -8px;
+  border: 2px solid var(--bg);
+}
+.avatar-stack .avatar:first-child { margin-left: 0; }
+
+/* ---------- プルリフレッシュ ---------- */
+.pull-indicator {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translate(-50%, -40px);
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  z-index: 15;
+  pointer-events: none;
+}
+.pull-spinner {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+}
+.pull-indicator.refreshing .pull-spinner { animation: spin 0.6s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+
 .screen::-webkit-scrollbar { width: 0; }

@@ -19,18 +19,17 @@
     </div>
   </header>
 
-  <!-- 進行度バー（シミュレーション中のみ表示） -->
+  <!-- 進行度バー（シミュレーション中のみ意味を持つが、常設で残す） -->
   <div class="progress-track"><div id="progress-fill" class="progress-fill"></div></div>
-  <div id="status-strip" class="status-strip" style="display:none;">
-    <span>経過を確認中…</span>
-    <span class="timer" id="timer-label">15:00</span>
-  </div>
 
   <!-- ホーム画面 -->
   <section id="screen-home" class="screen">
+    <div id="pull-indicator" class="pull-indicator"><div class="pull-spinner"></div></div>
+
     <div id="composer" class="composer">
-      <textarea id="post-input" maxlength="140" placeholder="いまどうしてる？（投稿するとバズが始まります）"></textarea>
+      <textarea id="post-input" maxlength="40" placeholder="いまどうしてる？"></textarea>
       <div class="composer-footer">
+        <span class="char-count" id="char-count">0/40</span>
         <button id="post-btn" class="post-btn" disabled>投稿する</button>
       </div>
     </div>
@@ -53,7 +52,10 @@
       </div>
     </div>
 
-    <div id="home-hint" class="hint">投稿すると、通知が押し寄せてくる様子を体験できます。</div>
+    <div id="home-quotes" class="home-quotes hidden">
+      <div class="home-quotes-title">引用ポスト</div>
+      <div id="home-quotes-list"></div>
+    </div>
   </section>
 
   <!-- 通知画面 -->
@@ -130,13 +132,11 @@
 
   <!-- スタート案内オーバーレイ -->
   <div id="start-overlay" class="overlay">
-    <div class="big-emoji">📈</div>
-    <h2>バズる瞬間を疑似体験</h2>
-    <p>
-      投稿すると、いいね・リポスト・返信・DMが際限なく届き始めます。<br>
-      通知を確認したくなる衝動そのものが、このシミュレーターの体験です。<br>
-      15分後、通知は前触れなく止まります。
-    </p>
+    <div class="overlay-mark">B</div>
+    <div class="breathe-text-wrap">
+      <div class="breathe-text" id="breathe-1">バズの通知に埋もれる</div>
+      <div class="breathe-text" id="breathe-2">まずは何かポストしてみましょう</div>
+    </div>
     <button id="overlay-start-btn" class="primary-btn">はじめる</button>
   </div>
 

@@ -1,15 +1,17 @@
 /**
  * render.js
- * DOM操作全般（画面切替、通知/DMリストの描画、カウンターアニメーション、
- * リザルト画面の生成）を担当する。ロジック側(engine.js)から呼び出される。
+ * DOM操作全般（画面切替、通知/DM/引用の描画、カウンターアニメーション、
+ * プルリフレッシュ、リザルト画面の生成）を担当する。ロジック側(engine.js)から呼び出される。
  */
 const Render = (() => {
   const els = {};
   let activeTab = "home";
   let notifTabLastOpenedAt = 0;
   let dmTabLastOpenedAt = 0;
+  let dmUnread = 0;
 
-  const MAX_LIST_ITEMS = 260; // DOM肥大化を防ぐための表示上限（内部カウンタは別途無制限に加算）
+  const MAX_LIST_ITEMS = 260;      // 通知/DMタブのDOM肥大化防止用の上限
+  const MAX_HOME_QUOTES = 60;      // ホーム画面の引用ポスト欄の上限
 
   function cacheEls() {
     els.app = document.getElementById("app");
@@ -18,13 +20,15 @@ const Render = (() => {
     els.composer = document.getElementById("composer");
     els.myPost = document.getElementById("my-post");
     els.myPostText = document.getElementById("my-post-text");
-    els.homeHint = document.getElementById("home-hint");
     els.statLike = document.getElementById("stat-like");
     els.statRepost = document.getElementById("stat-repost");
     els.statReply = document.getElementById("stat-reply");
     els.statLikeWrap = document.querySelector(".stat.like");
     els.statRepostWrap = document.querySelector(".stat.repost");
     els.statReplyWrap = document.querySelector(".stat.reply");
+
+    els.homeQuotes = document.getElementById("home-quotes");
+    els.homeQuotesList = document.getElementById("home-quotes-list");
 
     els.notifList = document.getElementById("notif-list");
     els.notifEmpty = document.getElementById("notif-empty");
@@ -38,8 +42,6 @@ const Render = (() => {
     els.tabs = Array.from(document.querySelectorAll(".tab"));
 
     els.progressFill = document.getElementById("progress-fill");
-    els.statusStrip = document.getElementById("status-strip");
-    els.timerLabel = document.getElementById("timer-label");
 
     els.screens = {
       home: document.getElementById("screen-home"),
@@ -50,6 +52,8 @@ const Render = (() => {
 
     els.startOverlay = document.getElementById("start-overlay");
     els.overlayStartBtn = document.getElementById("overlay-start-btn");
+
+    els.pullIndicator = document.getElementById("pull-indicator");
   }
 
   function formatCount(n) {
@@ -58,17 +62,10 @@ const Render = (() => {
     return (n / 1000000).toFixed(1) + "M";
   }
 
-  function formatClock(ms) {
-    const totalSec = Math.max(0, Math.ceil(ms / 1000));
-    const m = Math.floor(totalSec / 60);
-    const s = totalSec % 60;
-    return `${m}:${String(s).padStart(2, "0")}`;
-  }
-
   function bump(el) {
+    if (!el) return;
     el.classList.remove("bump");
-    // reflow強制でアニメーションを再トリガー
-    void el.offsetWidth;
+    void el.offsetWidth; // reflow強制でアニメーションを再トリガー
     el.classList.add("bump");
   }
 
@@ -86,6 +83,7 @@ const Render = (() => {
     }
     if (name === "dm") {
       dmTabLastOpenedAt = Date.now();
+      dmUnread = 0;
       updateBadge(els.badgeDm, 0);
     }
   }
@@ -110,21 +108,96 @@ const Render = (() => {
     while (container.children.length > MAX_LIST_ITEMS) {
       container.removeChild(container.lastElementChild);
     }
-    emptyEl.style.display = container.children.length ? "none" : "block";
+    if (emptyEl) emptyEl.style.display = container.children.length ? "none" : "block";
   }
 
   function avatarHtml(user, size = "") {
     return `<div class="avatar ${size}" style="background:${user.color}">${user.emoji}</div>`;
   }
 
+  function quoteEmbedHtml() {
+    const text = (State.postText || "").length > 60 ? State.postText.slice(0, 60) + "…" : State.postText;
+    return `
+      <div class="quote-embed">
+        <div class="quote-embed-head">@you</div>
+        <div class="quote-embed-text">${escapeHtml(text)}</div>
+      </div>`;
+  }
+
+  function escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  // ---------- 未読バッジ加算（3秒間の猶予付き） ----------
+  function bumpNotifBadge(now) {
+    const graceActive = activeTab === "notifications" && (now - notifTabLastOpenedAt < 3000);
+    if (!graceActive) {
+      State.unreadCount++;
+      updateBadge(els.badgeNotif, State.unreadCount);
+    }
+  }
+  function bumpDmBadge(now) {
+    const graceActive = activeTab === "dm" && (now - dmTabLastOpenedAt < 3000);
+    if (!graceActive) {
+      dmUnread++;
+      updateBadge(els.badgeDm, dmUnread);
+    }
+  }
+
+  // ---------- プルリフレッシュ ----------
+  function bindPullToRefresh() {
+    const el = els.screens.home;
+    const indicator = els.pullIndicator;
+    let startY = 0, pulling = false, pull = 0;
+
+    el.addEventListener("pointerdown", (e) => {
+      if (el.scrollTop <= 0) { startY = e.clientY; pulling = true; }
+    });
+    el.addEventListener("pointermove", (e) => {
+      if (!pulling) return;
+      const dy = e.clientY - startY;
+      if (dy > 0 && el.scrollTop <= 0) {
+        pull = Math.min(dy * 0.5, 90);
+        indicator.style.transform = `translate(-50%, ${pull}px)`;
+        indicator.style.opacity = Math.min(pull / 55, 1);
+      }
+    });
+    const release = () => {
+      if (!pulling) return;
+      pulling = false;
+      if (pull > 55) {
+        indicator.classList.add("refreshing");
+        indicator.style.transform = `translate(-50%, 46px)`;
+        indicator.style.opacity = 1;
+        setTimeout(() => {
+          indicator.classList.remove("refreshing");
+          indicator.style.transform = "";
+          indicator.style.opacity = 0;
+          bump(els.statLikeWrap && els.statLikeWrap.querySelector(".num"));
+          bump(els.statRepostWrap && els.statRepostWrap.querySelector(".num"));
+          bump(els.statReplyWrap && els.statReplyWrap.querySelector(".num"));
+        }, 500);
+      } else {
+        indicator.style.transform = "";
+        indicator.style.opacity = 0;
+      }
+      pull = 0;
+    };
+    el.addEventListener("pointerup", release);
+    el.addEventListener("pointercancel", release);
+    el.addEventListener("pointerleave", release);
+  }
+
   return {
     init() {
       cacheEls();
+      bindPullToRefresh();
     },
 
     setTheme(theme) {
       els.app.dataset.theme = theme;
-      document.documentElement.dataset.theme = theme; // color-scheme等をhtml要素側にも反映させる保険
+      document.documentElement.dataset.theme = theme;
     },
 
     switchScreen,
@@ -137,12 +210,12 @@ const Render = (() => {
 
     onStart() {
       els.composer.style.display = "none";
-      els.homeHint.style.display = "none";
       els.myPost.style.display = "block";
       els.myPostText.textContent = State.postText;
-      els.statusStrip.style.display = "flex";
       els.notifList.innerHTML = "";
       els.dmList.innerHTML = "";
+      els.homeQuotesList.innerHTML = "";
+      els.homeQuotes.classList.add("hidden");
       els.notifEmpty.style.display = "block";
       els.dmEmpty.style.display = "block";
       this.updateHomeStats();
@@ -152,58 +225,118 @@ const Render = (() => {
       els.statLike.textContent = formatCount(State.likes);
       els.statRepost.textContent = formatCount(State.reposts);
       els.statReply.textContent = formatCount(State.replies);
-      bump(els.statLikeWrap.querySelector(".num"));
-      bump(els.statRepostWrap.querySelector(".num"));
-      bump(els.statReplyWrap.querySelector(".num"));
     },
 
-    updateProgress(t, remainingMs) {
+    updateProgress(t) {
       els.progressFill.style.width = `${Math.min(100, t * 100)}%`;
-      els.timerLabel.textContent = formatClock(remainingMs);
     },
 
+    // ---------- A通知（いいね/リポスト/フォロー） ----------
     pushNotification(item) {
-      State.notifications.unshift(item);
-
-      // 未読バッジ加算判定：通知タブを開いた直後3秒間は加算を抑制する
-      const now = Date.now();
-      const graceActive = activeTab === "notifications" && (now - notifTabLastOpenedAt < 3000);
-      if (!graceActive) {
-        State.unreadCount++;
-        updateBadge(els.badgeNotif, State.unreadCount);
-      }
+      const now = item.time;
+      bumpNotifBadge(now);
 
       const div = document.createElement("div");
       div.className = "list-item";
       div.innerHTML = `
-        <div class="icon-mark">${item.icon}</div>
+        ${avatarHtml(item.user)}
         <div class="content">
-          <div class="line1"><b>${item.user.name}</b> <span style="color:var(--text-sub)">@${item.user.handle}</span></div>
-          <div class="sub">${item.text.replace(item.user.name, "").trim() || item.text}</div>
+          <div class="line1">${escapeHtml(item.text)}</div>
+          <div class="sub">@${escapeHtml(item.user.handle)}</div>
         </div>
-        <div class="time">たった今</div>
+        <div class="icon-mark">${item.icon}</div>
       `;
       els.notifList.prepend(div);
       trimList(els.notifList, els.notifEmpty);
     },
 
-    pushDM(dm, timestamp) {
-      State.dms.unshift({ ...dm, time: timestamp });
+    // ---------- マイルストーン通知（複数人まとめて） ----------
+    pushMilestone(type, step, sampleUser, now) {
+      bumpNotifBadge(now);
+      const actionMap = {
+        like: "あなたのポストをいいねしました",
+        repost: "あなたのポストをリポストしました",
+        follow: "あなたをフォローしました",
+      };
+      const iconMap = { like: "❤️", repost: "🔁", follow: "➕" };
 
-      const now = Date.now();
-      const graceActive = activeTab === "dm" && (now - dmTabLastOpenedAt < 3000);
-      if (!graceActive) {
-        const unread = (els.badgeDm.textContent === "0" ? 0 : parseInt(els.badgeDm.textContent) || 0) + 1;
-        updateBadge(els.badgeDm, unread);
+      // スタック表示用に追加のアバターをランダム生成
+      const stackColors = ["#60A5FA", "#F472B6", "#34D399", "#FBBF24", "#A78BFA"];
+      const stackEmojis = ["😀", "😆", "🙂", "😎", "🥳"];
+      let stackHtml = avatarHtml(sampleUser, "small");
+      for (let i = 0; i < 4; i++) {
+        stackHtml += `<div class="avatar small" style="background:${stackColors[i % stackColors.length]}">${stackEmojis[i % stackEmojis.length]}</div>`;
       }
 
+      const div = document.createElement("div");
+      div.className = "list-item milestone-item";
+      div.innerHTML = `
+        <div class="avatar-stack">${stackHtml}</div>
+        <div class="content">
+          <div class="line1"><b>${escapeHtml(sampleUser.name)}</b>さん他${step}人が${actionMap[type]}</div>
+        </div>
+        <div class="icon-mark">${iconMap[type]}</div>
+      `;
+      els.notifList.prepend(div);
+      trimList(els.notifList, els.notifEmpty);
+    },
+
+    // ---------- B通知：返信 ----------
+    pushReply(user, text, now) {
+      bumpNotifBadge(now);
+      const div = document.createElement("div");
+      div.className = "list-item";
+      div.innerHTML = `
+        ${avatarHtml(user)}
+        <div class="content">
+          <div class="line1"><b>${escapeHtml(user.name)}</b> <span class="sub-handle">@${escapeHtml(user.handle)}</span></div>
+          <div class="sub reply-line"><span class="reply-to">@you</span> ${escapeHtml(text)}</div>
+        </div>
+        <div class="icon-mark">💬</div>
+      `;
+      els.notifList.prepend(div);
+      trimList(els.notifList, els.notifEmpty);
+    },
+
+    // ---------- B通知：引用（本文埋め込み表示） ----------
+    pushQuote(user, text, now) {
+      bumpNotifBadge(now);
+      const html = `
+        ${avatarHtml(user)}
+        <div class="content">
+          <div class="line1"><b>${escapeHtml(user.name)}</b> <span class="sub-handle">@${escapeHtml(user.handle)}</span> さんが引用しました</div>
+          <div class="quote-comment">${escapeHtml(text)}</div>
+          ${quoteEmbedHtml()}
+        </div>
+      `;
+
+      const div = document.createElement("div");
+      div.className = "list-item quote-item";
+      div.innerHTML = html;
+      els.notifList.prepend(div);
+      trimList(els.notifList, els.notifEmpty);
+
+      // ホーム画面の「引用ポスト」欄にも追加更新していく
+      els.homeQuotes.classList.remove("hidden");
+      const homeDiv = document.createElement("div");
+      homeDiv.className = "list-item quote-item";
+      homeDiv.innerHTML = html;
+      els.homeQuotesList.prepend(homeDiv);
+      while (els.homeQuotesList.children.length > MAX_HOME_QUOTES) {
+        els.homeQuotesList.removeChild(els.homeQuotesList.lastElementChild);
+      }
+    },
+
+    // ---------- C通知：DM ----------
+    pushDM(dm, now) {
+      bumpDmBadge(now);
       const div = document.createElement("div");
       div.className = "list-item";
       div.innerHTML = `
         ${avatarHtml(dm.user, "small")}
         <div class="content">
-          <div class="line1"><b>${dm.user.name}</b> <span style="color:var(--text-sub)">・${dm.label}</span></div>
-          <div class="sub">${dm.text}</div>
+          <div class="line1"><b>${escapeHtml(dm.user.name)}</b> <span class="sub-handle">・${escapeHtml(dm.label)}</span></div>
+          <div class="sub">${escapeHtml(dm.text)}</div>
         </div>
       `;
       els.dmList.prepend(div);
@@ -211,11 +344,10 @@ const Render = (() => {
     },
 
     onEnd() {
-      els.statusStrip.style.display = "none";
       els.tabbar.classList.add("hidden");
 
       const impressions = Math.round(
-        (State.likes + State.reposts + State.replies) * (15 + Math.random() * 25) + State.totalNotifications * 2
+        (State.likes + State.reposts + State.replies) * (15 + Math.random() * 25) + State.totalNotifications * 1.6
       );
 
       const topReplyCat = Object.entries(State.replyCategoryCount).sort((a, b) => b[1] - a[1])[0];
@@ -223,10 +355,10 @@ const Render = (() => {
       const topDmCat = Object.entries(State.dmCategoryCount).sort((a, b) => b[1] - a[1])[0];
 
       let rank = "S";
-      const score = State.likes + State.reposts * 2 + State.replies * 1.5 + State.dms.length * 3;
-      if (score > 20000) rank = "LEGEND";
-      else if (score > 8000) rank = "SSS";
-      else if (score > 3000) rank = "SS";
+      const score = State.totalNotifications;
+      if (score > 4000000) rank = "LEGEND";
+      else if (score > 1500000) rank = "SSS";
+      else if (score > 600000) rank = "SS";
       else rank = "S";
 
       document.getElementById("result-rank").textContent = rank;
@@ -240,11 +372,11 @@ const Render = (() => {
       document.getElementById("r-likes").textContent = formatCount(State.likes);
       document.getElementById("r-reposts").textContent = formatCount(State.reposts);
       document.getElementById("r-replies").textContent = formatCount(State.replies);
-      document.getElementById("r-dms").textContent = formatCount(State.dms.length);
+      document.getElementById("r-dms").textContent = formatCount(State.dmTotal);
       document.getElementById("r-total").textContent = formatCount(State.totalNotifications);
-      document.getElementById("r-peak").textContent = `${State.peakNotifPerSec}/秒`;
+      document.getElementById("r-peak").textContent = `${formatCount(State.peakNotifPerSec)}/秒`;
       document.getElementById("r-trend").textContent =
-        score > 8000 ? "1位" : score > 3000 ? `${Math.ceil(Math.random() * 5) + 1}位` : `${Math.ceil(Math.random() * 20) + 5}位`;
+        score > 1500000 ? "1位" : score > 600000 ? `${Math.ceil(Math.random() * 5) + 1}位` : `${Math.ceil(Math.random() * 20) + 5}位`;
 
       document.getElementById("r-top-reply").textContent = topReplyCat && topReplyCat[1] > 0 ? catLabelMap[topReplyCat[0]] : "-";
       document.getElementById("r-top-dm").textContent = topDmCat && topDmCat[1] > 0 ? topDmCat[0] : "-";
