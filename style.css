@@ -1,0 +1,594 @@
+/*
+  デザイントークン
+  ---------------------------------------------------------------
+  色:
+    --color-washi       : #F1EAD9  和紙の生成り色（背景）
+    --color-washi-dark   : #E4D9C0  和紙の陰影（罫線・区切り）
+    --color-sumi         : #23211D  墨（本文・見出し）
+    --color-sumi-soft     : #4A463D  墨の中間色（補助テキスト）
+    --color-shu           : #A6382C  朱（成立演出・アクセント）
+    --color-ki            : #8B6E4E  木（枠・ボタン）
+  タイポグラフィ:
+    見出し・本文: "Shippori Mincho", "Noto Serif JP", serif（明朝体で統一）
+    デバッグ等の実用表示のみ等幅フォントで区別
+  シグネチャ:
+    30マスのリールを400字詰め原稿用紙の罫線として表現し、
+    成立したマスにのみ朱印を思わせる印を重ねる
+*/
+
+@import url("https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;600;800&family=Noto+Serif+JP:wght@400;600&display=swap");
+
+:root {
+  --color-washi: #f1ead9;
+  --color-washi-dark: #e4d9c0;
+  --color-sumi: #23211d;
+  --color-sumi-soft: #4a463d;
+  --color-shu: #a6382c;
+  --color-ki: #8b6e4e;
+
+  --font-display: "Shippori Mincho", "Noto Serif JP", serif;
+  --font-body: "Noto Serif JP", "Shippori Mincho", serif;
+  --font-mono: "SFMono-Regular", Consolas, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--color-washi);
+  color: var(--color-sumi);
+  font-family: var(--font-body);
+}
+
+body {
+  background-image:
+    repeating-linear-gradient(
+      0deg,
+      rgba(139, 110, 78, 0.035) 0px,
+      rgba(139, 110, 78, 0.035) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  padding: 48px 20px 80px;
+}
+
+.jukugo-slot {
+  width: 100%;
+  max-width: 720px;
+}
+
+/* ---------- ヘッダー ---------- */
+
+.header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 2.4rem;
+  letter-spacing: 0.5em;
+  margin: 0 0 12px -0.5em;
+  color: var(--color-sumi);
+}
+
+.subtitle {
+  font-size: 0.85rem;
+  color: var(--color-sumi-soft);
+  letter-spacing: 0.15em;
+  margin: 0;
+}
+
+/* ---------- スコアパネル ---------- */
+
+.score-panel {
+  display: flex;
+  justify-content: center;
+  gap: 48px;
+  margin-bottom: 32px;
+  padding: 18px 0;
+  border-top: 1px solid var(--color-washi-dark);
+  border-bottom: 1px solid var(--color-washi-dark);
+}
+
+.score-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.score-label {
+  font-size: 0.75rem;
+  color: var(--color-sumi-soft);
+  letter-spacing: 0.1em;
+}
+
+.score-value {
+  font-family: var(--font-display);
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: var(--color-shu);
+  font-variant-numeric: tabular-nums;
+}
+
+.score-value-money {
+  color: var(--color-sumi);
+}
+
+/* ---------- リールグリッド（原稿用紙モチーフ） ---------- */
+
+.reel-grid-wrapper {
+  position: relative;
+  margin-bottom: 32px;
+}
+
+.judge-lines-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* SVGはhidden属性だけではdisplay:noneが効かないブラウザがあるため明示指定する */
+.judge-lines-overlay[hidden] {
+  display: none;
+}
+
+.popup-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.banner-layer {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 4;
+  overflow: visible;
+}
+
+.word-tooltip {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  margin-top: -8px;
+  background: rgba(35, 33, 29, 0.92);
+  color: var(--color-washi);
+  font-size: 0.7rem;
+  line-height: 1.5;
+  padding: 6px 10px;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 6;
+}
+
+.word-tooltip::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: rgba(35, 33, 29, 0.92);
+}
+
+.reel-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 0;
+  border: 1px solid var(--color-sumi);
+  background: var(--color-washi);
+}
+
+.cell {
+  aspect-ratio: 1 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-size: clamp(1.5rem, 5.2vw, 2.2rem);
+  border: 1px solid var(--color-washi-dark);
+  color: var(--color-sumi-soft);
+  position: relative;
+  transition: color 0.15s ease, background-color 0.3s ease;
+}
+
+/* リール間の区切りを太い罫線で強調 */
+.cell:nth-child(6n + 2) {
+  border-right: 2px solid var(--color-sumi);
+}
+.cell:nth-child(6n + 4) {
+  border-right: 2px solid var(--color-sumi);
+}
+
+.cell-changing {
+  animation: cell-flicker 0.12s ease-out;
+}
+
+@keyframes cell-flicker {
+  from {
+    opacity: 0.35;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.cell-fixed {
+  color: var(--color-sumi);
+  font-weight: 600;
+  background-color: rgba(166, 56, 44, 0.06);
+  cursor: default;
+}
+
+.cell-fixed::after {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border: 1.5px solid rgba(166, 56, 44, 0.55);
+  border-radius: 2px;
+  pointer-events: none;
+}
+
+.cell-hit-flash::after {
+  animation: hit-stamp 0.5s ease-out;
+}
+
+@keyframes hit-stamp {
+  from {
+    opacity: 0;
+    transform: scale(1.4);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* 成立時、マス自体が一瞬「ボンッ」と拡大してから通常サイズへ戻る演出。
+   どのマス同士が組み合わさって成立したかは、対象マスすべてが同時に
+   ポップすることで直感的に把握できるようにしている。 */
+.cell-pop {
+  animation: cell-pop 0.32s cubic-bezier(0.34, 1.56, 0.64, 1);
+  z-index: 2;
+}
+
+@keyframes cell-pop {
+  0% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.35);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* ---------- コントロール ---------- */
+
+.controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 40px;
+}
+
+.spin-button {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  letter-spacing: 0.3em;
+  padding: 14px 56px;
+  background: var(--color-sumi);
+  color: var(--color-washi);
+  border: 1px solid var(--color-sumi);
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.spin-button:hover:not(:disabled) {
+  background: var(--color-shu);
+  border-color: var(--color-shu);
+}
+
+.spin-button:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.spin-button:disabled {
+  background: var(--color-washi-dark);
+  color: var(--color-sumi-soft);
+  border-color: var(--color-washi-dark);
+  cursor: not-allowed;
+}
+
+.debug-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  color: var(--color-sumi-soft);
+}
+
+/* ---------- 成立熟語一覧 ---------- */
+
+.result-panel {
+  border-top: 1px solid var(--color-washi-dark);
+  padding-top: 20px;
+  margin-bottom: 32px;
+}
+
+.result-heading {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  letter-spacing: 0.2em;
+  color: var(--color-sumi-soft);
+  margin: 0 0 12px;
+}
+
+.result-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  min-height: 1.6em;
+}
+
+.result-list li {
+  font-size: 0.95rem;
+  color: var(--color-sumi);
+  border-bottom: 1px solid var(--color-shu);
+  padding-bottom: 1px;
+}
+
+/* ---------- 統計 ---------- */
+
+.stats-panel {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  flex-wrap: wrap;
+  font-size: 0.75rem;
+  color: var(--color-sumi-soft);
+  margin-bottom: 24px;
+}
+
+/* ---------- デバッグパネル ---------- */
+
+.debug-panel {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--color-sumi-soft);
+  background: rgba(0, 0, 0, 0.03);
+  border: 1px dashed var(--color-ki);
+  padding: 12px;
+  line-height: 1.6;
+}
+
+.debug-log {
+  margin-top: 8px;
+  max-height: 120px;
+  overflow-y: auto;
+  border-top: 1px dashed var(--color-washi-dark);
+  padding-top: 6px;
+}
+
+/* ---------- スコアポップアップ（+100等） ---------- */
+
+.score-popup {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.4rem;
+  color: var(--color-shu);
+  text-shadow: 0 0 6px var(--color-washi), 0 0 2px var(--color-washi);
+  pointer-events: none;
+  z-index: 5;
+  animation: score-popup-rise 0.9s ease-out forwards;
+}
+
+@keyframes score-popup-rise {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.7);
+  }
+  15% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.15);
+  }
+  30% {
+    transform: translate(-50%, -50%) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -160%) scale(1);
+  }
+}
+
+/* ---------- コンボ専用演出 ---------- */
+
+.combo-banner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 14px 36px;
+  background: rgba(35, 33, 29, 0.88);
+  border: 1.5px solid var(--color-shu);
+  animation: combo-banner-pop 0.9s ease-out forwards;
+}
+
+.combo-banner-n {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.8rem;
+  color: var(--color-washi);
+  letter-spacing: 0.1em;
+}
+
+.combo-banner-score {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.1rem;
+  color: #e0b13a;
+}
+
+@keyframes combo-banner-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.6) rotate(-2deg);
+  }
+  20% {
+    opacity: 1;
+    transform: scale(1.08) rotate(1deg);
+  }
+  35% {
+    transform: scale(1) rotate(0deg);
+  }
+  80% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.04) rotate(0deg);
+  }
+}
+
+.grid-shake {
+  animation: grid-shake 0.35s ease-in-out;
+}
+
+@keyframes grid-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-4px);
+  }
+  40% {
+    transform: translateX(4px);
+  }
+  60% {
+    transform: translateX(-3px);
+  }
+  80% {
+    transform: translateX(3px);
+  }
+}
+
+/* ---------- リザルト画面 ---------- */
+
+.result-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(35, 33, 29, 0.72);
+  z-index: 10;
+  padding: 20px;
+}
+
+.result-overlay:not([hidden]) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.result-card {
+  background: var(--color-washi);
+  border: 1px solid var(--color-sumi);
+  padding: 40px 48px;
+  width: 100%;
+  max-width: 420px;
+  text-align: center;
+}
+
+.result-card-heading {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  letter-spacing: 0.2em;
+  color: var(--color-shu);
+  margin: 0 0 8px;
+}
+
+.result-card-sub {
+  font-size: 0.85rem;
+  color: var(--color-sumi-soft);
+  margin: 0 0 24px;
+}
+
+.result-card-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px 12px;
+  margin: 0 0 32px;
+  text-align: left;
+}
+
+.result-card-stats dt {
+  font-size: 0.7rem;
+  color: var(--color-sumi-soft);
+  letter-spacing: 0.05em;
+}
+
+.result-card-stats dd {
+  margin: 2px 0 0;
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: var(--color-sumi);
+  font-variant-numeric: tabular-nums;
+}
+
+.result-replay-button {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  letter-spacing: 0.2em;
+  padding: 12px 40px;
+  background: var(--color-sumi);
+  color: var(--color-washi);
+  border: 1px solid var(--color-sumi);
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.result-replay-button:hover {
+  background: var(--color-shu);
+  border-color: var(--color-shu);
+}
+
+.result-replay-button:active {
+  transform: scale(0.97);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cell-changing,
+  .cell-hit-flash::after,
+  .cell-pop,
+  .score-popup,
+  .combo-banner,
+  .grid-shake {
+    animation: none !important;
+  }
+}
