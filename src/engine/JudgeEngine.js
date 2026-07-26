@@ -30,6 +30,15 @@ export class JudgeEngine {
   }
 
   /**
+   * acceptanceRateを実行時に変更する（ジャックポット抽選でスピンごとに
+   * 一時的にレートを引き上げるために使用する）。
+   * @param {number} rate
+   */
+  setAcceptanceRate(rate) {
+    this._acceptanceRate = rate;
+  }
+
+  /**
    * @param {import("./ReelEngine.js").ReelEngine} reelEngine
    * @param {import("./DictionaryEngine.js").DictionaryEngine} dictionaryEngine
    * @returns {{results: Array<{type:string,a:number,b:number,word:string,reading:string}>, score: number, n: number}}

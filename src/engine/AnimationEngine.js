@@ -164,6 +164,23 @@ export class AnimationEngine {
   }
 
   /**
+   * リプレイ成立時の専用演出。コンボバナーとは異なる、分かりやすい
+   * 「REPLAY」表示を出す。
+   */
+  playReplayBanner() {
+    if (!this._bannerLayerEl) return;
+
+    const banner = document.createElement("div");
+    banner.className = "replay-banner";
+    banner.innerHTML = `<span class="replay-banner-text">REPLAY</span><span class="replay-banner-sub">もう一度スピン！</span>`;
+
+    this._bannerLayerEl.appendChild(banner);
+    setTimeout(() => banner.remove(), 1100);
+
+    this._shakeGrid("strong");
+  }
+
+  /**
    * スピン開始時、全セル・オーバーレイの演出状態をリセットする
    * @param {number} cellCount
    */

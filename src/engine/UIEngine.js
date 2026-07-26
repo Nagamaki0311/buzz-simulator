@@ -267,6 +267,19 @@ export class UIEngine {
     this.root.querySelector('[data-role="current-score"]').textContent =
       String(currentScore);
     this.root.querySelector('[data-role="money"]').textContent = `${state.money}円`;
+
+    const spinButton = this.root.querySelector('[data-role="spin-button"]');
+    if (!state.spinning) {
+      spinButton.textContent =
+        state.pendingReplays > 0 ? "SPIN（リプレイ）" : "SPIN（30円）";
+    }
+  }
+
+  /**
+   * リプレイ成立時、目立つ「REPLAY」演出を表示する。
+   */
+  onReplayTriggered() {
+    this.animationEngine.playReplayBanner();
   }
 
   /**

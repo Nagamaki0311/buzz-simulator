@@ -38,6 +38,7 @@ async function main() {
 
   // 動作確認・デバッグ用のフック（ゲームプレイ自体には影響しない）
   window.__gameEngine = gameEngine;
+  window.__uiEngine = uiEngine;
 
   uiEngine.onSettingsChanged((partial) => {
     updateSettings(partial);
@@ -102,6 +103,12 @@ async function main() {
           `[${(gameEngine.getSpinElapsedMs(now) / 1000).toFixed(2)}s] 成立: ${r.word}(${r.reading}) type=${r.type}`
         );
       }
+      if (hit.replayTriggered) {
+        uiEngine.onReplayTriggered();
+        uiEngine.appendDebugLog(
+          `[${(gameEngine.getSpinElapsedMs(now) / 1000).toFixed(2)}s] REPLAY発生`
+        );
+      }
     }
 
     uiEngine.renderDebug({ fps, lastSearchTimeMs });
@@ -119,11 +126,16 @@ async function main() {
       });
       uiEngine.renderStats(updated);
       uiEngine.appendDebugLog(
-        `スピン終了: ${finalState.spinResults.length}語成立 / ${finalState.spinScore}点 / 所持金${finalState.money}円`
+        `スピン終了: ${finalState.spinResults.length}語成立 / ${finalState.spinScore}点 / 所持金${finalState.money}円` +
+          (finalState.pendingReplays > 0 ? ` / リプレイ残り${finalState.pendingReplays}回` : "")
       );
 
       if (finalState.gameOver) {
         showResult();
+      } else if (finalState.pendingReplays > 0) {
+        // リプレイ権が残っている場合、ボタン操作なしで自動的に次のスピンへ
+        uiEngine.setSpinButtonEnabled(false);
+        setTimeout(startSpin, 700);
       } else {
         uiEngine.setSpinButtonEnabled(true);
       }
