@@ -7,10 +7,14 @@ import { buildLinePairs, cellCenterPercent } from "../judge/gridLines.js";
  * 成立マスのツールチップ表示）のバインディングを担当する。GameEngineの状態を
  * 「表示用に変換」するのみで、正のゲーム状態はGameEngineが保持する
  * （このEngineはGameEngineの状態を直接書き換えない）。
+ *
+ * 各セルは <div class="cell"><span class="cell-char">文字</span></div> という
+ * 構造にしている。成立時の拡大演出（cell-pop）を内側のspanのみに適用することで、
+ * マス自体のサイズ・レイアウトを変えずに文字だけが拡大するようにするため。
  */
 export class UIEngine {
   /**
-   * @param {{root: HTMLElement, gameEngine: import("./GameEngine.js").GameEngine, audioEngine: import("./AudioEngine.js").AudioEngine, createAnimationEngine: (getCellElement: (i:number)=>HTMLElement, popupLayerEl: HTMLElement, bannerLayerEl: HTMLElement) => import("./AnimationEngine.js").AnimationEngine}} params
+   * @param {{root: HTMLElement, gameEngine: import("./GameEngine.js").GameEngine, audioEngine: import("./AudioEngine.js").AudioEngine, createAnimationEngine: (getCharElement: (i:number)=>HTMLElement, getCellElement: (i:number)=>HTMLElement, effectLayerEl: HTMLElement, bannerLayerEl: HTMLElement) => import("./AnimationEngine.js").AnimationEngine}} params
    */
   constructor({ root, gameEngine, audioEngine, createAnimationEngine }) {
     this.root = root;
@@ -18,17 +22,19 @@ export class UIEngine {
     this.audioEngine = audioEngine;
 
     this._cellElements = [];
+    this._cellCharElements = [];
     this._prevGrid = [];
     this._debugVisible = false;
 
     this._buildDom();
 
-    const popupLayerEl = this.root.querySelector('[data-role="popup-layer"]');
+    const effectLayerEl = this.root.querySelector('[data-role="effect-layer"]');
     const bannerLayerEl = this.root.querySelector('[data-role="banner-layer"]');
-    // セルDOM構築後にAnimationEngineを生成する（getCellElementがセル要素配列を参照するため）
+    // セルDOM構築後にAnimationEngineを生成する（getterがセル要素配列を参照するため）
     this.animationEngine = createAnimationEngine(
+      (i) => this._cellCharElements[i],
       (i) => this._cellElements[i],
-      popupLayerEl,
+      effectLayerEl,
       bannerLayerEl
     );
 
@@ -49,19 +55,15 @@ export class UIEngine {
             <span class="score-value score-value-money" data-role="money">500円</span>
           </div>
           <div class="score-item">
-            <span class="score-label">累計スコア</span>
-            <span class="score-value" data-role="total-score">0</span>
-          </div>
-          <div class="score-item">
-            <span class="score-label">今回獲得点</span>
-            <span class="score-value" data-role="spin-score">0</span>
+            <span class="score-label">現在のスコア</span>
+            <span class="score-value" data-role="current-score">0</span>
           </div>
         </div>
 
         <div class="reel-grid-wrapper">
           <div class="reel-grid" data-role="reel-grid"></div>
           <svg class="judge-lines-overlay" data-role="judge-lines-overlay" hidden></svg>
-          <div class="popup-layer" data-role="popup-layer"></div>
+          <div class="effect-layer" data-role="effect-layer"></div>
           <div class="banner-layer" data-role="banner-layer"></div>
           <div class="word-tooltip" data-role="word-tooltip" hidden></div>
         </div>
@@ -112,8 +114,14 @@ export class UIEngine {
       const cell = document.createElement("div");
       cell.className = "cell";
       cell.dataset.index = String(i);
+
+      const charEl = document.createElement("span");
+      charEl.className = "cell-char";
+      cell.appendChild(charEl);
+
       grid.appendChild(cell);
       this._cellElements.push(cell);
+      this._cellCharElements.push(charEl);
 
       cell.addEventListener("mouseenter", () => this._showTooltipForCell(i, cell));
       cell.addEventListener("mouseleave", () => this._hideTooltip());
@@ -236,25 +244,28 @@ export class UIEngine {
 
   /**
    * 毎フレーム呼び出し、GameEngineの状態をDOMへ反映する。
+   * 「現在のスコア」は、このゲーム（セッション）で完了したスピンの合計
+   * （sessionScore）に、進行中のスピンのスコア（spinScore）を加えたもの。
    * @param {object} state GameEngine.getState()の結果
    */
   render(state) {
     for (let i = 0; i < state.grid.length; i++) {
-      const el = this._cellElements[i];
+      const cellEl = this._cellElements[i];
+      const charEl = this._cellCharElements[i];
       const char = state.grid[i] || "";
-      if (el.textContent !== char) {
-        el.textContent = char;
+      if (charEl.textContent !== char) {
+        charEl.textContent = char;
         if (this._prevGrid[i] !== char && !state.fixedFlags[i]) {
           this.animationEngine.playCellChange(i);
         }
       }
-      el.classList.toggle("cell-fixed", !!state.fixedFlags[i]);
+      cellEl.classList.toggle("cell-fixed", !!state.fixedFlags[i]);
     }
     this._prevGrid = state.grid.slice();
 
-    this.root.querySelector('[data-role="spin-score"]').textContent = String(
-      state.spinScore || 0
-    );
+    const currentScore = (state.sessionScore || 0) + (state.spinScore || 0);
+    this.root.querySelector('[data-role="current-score"]').textContent =
+      String(currentScore);
     this.root.querySelector('[data-role="money"]').textContent = `${state.money}円`;
   }
 
@@ -282,12 +293,9 @@ export class UIEngine {
   }
 
   /**
-   * @param {{totalScore:number, totalPlayCount:number, maxCombo:number, totalWordsFound:number}} data
+   * @param {{totalPlayCount:number, maxCombo:number, totalWordsFound:number}} data
    */
   renderStats(data) {
-    this.root.querySelector('[data-role="total-score"]').textContent = String(
-      data.totalScore
-    );
     this.root.querySelector('[data-role="total-play-count"]').textContent = String(
       data.totalPlayCount
     );

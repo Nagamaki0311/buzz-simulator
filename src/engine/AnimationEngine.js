@@ -1,27 +1,37 @@
 import { cellCenterPercent } from "../judge/gridLines.js";
 
+const PARTICLE_COUNT_PER_CELL = 7;
+
 /**
  * AnimationEngine
  *
  * DOM要素へのCSSクラス付与・削除、および成立時の一時的なオーバーレイ要素
- * （スコアポップアップ・コンボ演出）の生成を担当する。
+ * （パーティクル・衝撃波・スコアポップアップ・コンボ演出）の生成を担当する。
  * ゲームの正の状態（スコア・所持金など）は一切保持せず、GameEngineから渡された
  * 結果を「どう見せるか」のみに責務を限定している。
  *
- * 【ライン表示の削除について】
- * 以前は成立した2マスを線で結ぶ演出を実装していたが、視認性を下げるとの
- * フィードバックを受けて撤廃した。代わりに、成立したマス自体が一瞬拡大して
- * 元に戻る「ポップ」演出のみで成立箇所を判別できるようにしている。
+ * 【演出強化について】
+ * 成立時の「気持ちよさ」を高めるため、以下を組み合わせている。
+ *   - cell-pop: マス内の文字のみを対象にした、勢いのある拡大→縮小のバウンス
+ *     （マスそのもののサイズ・レイアウトは変えない）
+ *   - 文字のブラー→ピント演出: 一瞬ぼかしてから鮮明に戻すことで、
+ *     モーションブラーのような「勢い」を表現する（CSSでは真の残像は
+ *     表現できないため、このアプローチで代替している）
+ *   - パーティクル: 成立マスの中心から光の粒が放射状に飛び散る
+ *   - 衝撃波: 成立マスの中心から輪が広がって消える
+ *   - 軽い画面揺れ: 成立のたびに小さく、コンボ時はより大きく揺らす
  */
 export class AnimationEngine {
   /**
-   * @param {(index: number) => HTMLElement} getCellElement セルindex(0-29)からDOM要素を取得する関数
-   * @param {HTMLElement} popupLayerEl スコアポップアップを描画するオーバーレイ用DOM要素
+   * @param {(index: number) => HTMLElement} getCharElement セルindex(0-29)から文字要素(span.cell-char)を取得する関数
+   * @param {(index: number) => HTMLElement} getCellElement セルindex(0-29)からセル要素(div.cell)を取得する関数
+   * @param {HTMLElement} effectLayerEl パーティクル・衝撃波・スコアポップアップを描画するオーバーレイ用DOM要素
    * @param {HTMLElement} bannerLayerEl コンボ演出バナーを表示する全画面レイヤー
    */
-  constructor(getCellElement, popupLayerEl, bannerLayerEl) {
+  constructor(getCharElement, getCellElement, effectLayerEl, bannerLayerEl) {
+    this._getCharElement = getCharElement;
     this._getCellElement = getCellElement;
-    this._popupLayerEl = popupLayerEl;
+    this._effectLayerEl = effectLayerEl;
     this._bannerLayerEl = bannerLayerEl;
   }
 
@@ -30,7 +40,7 @@ export class AnimationEngine {
    * @param {number} index
    */
   playCellChange(index) {
-    const el = this._getCellElement(index);
+    const el = this._getCharElement(index);
     if (!el) return;
     el.classList.remove("cell-changing");
     void el.offsetWidth;
@@ -38,27 +48,78 @@ export class AnimationEngine {
   }
 
   /**
-   * 役成立時、そのマスに「ボンッ」と拡大してから通常サイズへ戻る演出をかける。
-   * どのマス同士で成立したかは、このポップ演出が同時に発生することで
-   * 直感的に把握できるようにしている（ライン等の追加表現は行わない）。
+   * 役成立時の演出一式。マス内の文字のみを対象に、勢いのある拡大バウンスと
+   * ブラー→ピント演出をかける。マスのサイズ・レイアウトには影響しない。
+   * 加えて、成立マスの中心からパーティクルと衝撃波を発生させ、
+   * 画面全体を軽く揺らす。
    * @param {number[]} indices
    */
   playHit(indices) {
     for (const index of indices) {
-      const el = this._getCellElement(index);
-      if (!el) continue;
-      el.classList.add("cell-fixed");
-      el.classList.remove("cell-changing");
+      const cellEl = this._getCellElement(index);
+      const charEl = this._getCharElement(index);
+      if (cellEl) {
+        cellEl.classList.add("cell-fixed");
+        cellEl.classList.add("cell-hit-flash");
+        setTimeout(() => cellEl.classList.remove("cell-hit-flash"), 500);
+      }
+      if (charEl) {
+        charEl.classList.remove("cell-changing", "cell-pop");
+        void charEl.offsetWidth;
+        charEl.classList.add("cell-pop");
+      }
 
-      el.classList.remove("cell-pop");
-      void el.offsetWidth;
-      el.classList.add("cell-pop");
-
-      el.classList.add("cell-hit-flash");
-      setTimeout(() => {
-        el.classList.remove("cell-hit-flash");
-      }, 500);
+      this._spawnShockwave(index);
+      this._spawnParticles(index);
     }
+
+    this._shakeGrid("light");
+  }
+
+  _spawnShockwave(index) {
+    if (!this._effectLayerEl) return;
+    const { x, y } = cellCenterPercent(index);
+
+    const ring = document.createElement("div");
+    ring.className = "shockwave-ring";
+    ring.style.left = `${x}%`;
+    ring.style.top = `${y}%`;
+    this._effectLayerEl.appendChild(ring);
+    setTimeout(() => ring.remove(), 500);
+  }
+
+  _spawnParticles(index) {
+    if (!this._effectLayerEl) return;
+    const { x, y } = cellCenterPercent(index);
+
+    for (let i = 0; i < PARTICLE_COUNT_PER_CELL; i++) {
+      const angle = (Math.PI * 2 * i) / PARTICLE_COUNT_PER_CELL + Math.random() * 0.5;
+      const distance = 28 + Math.random() * 22; // px相当（effect-layer内はpx基準で飛ばす）
+      const dx = Math.cos(angle) * distance;
+      const dy = Math.sin(angle) * distance;
+
+      const particle = document.createElement("div");
+      particle.className = "hit-particle";
+      particle.style.left = `${x}%`;
+      particle.style.top = `${y}%`;
+      particle.style.setProperty("--dx", `${dx}px`);
+      particle.style.setProperty("--dy", `${dy}px`);
+      this._effectLayerEl.appendChild(particle);
+      setTimeout(() => particle.remove(), 550);
+    }
+  }
+
+  /**
+   * 画面（リールグリッド）を軽く揺らす。
+   * @param {"light"|"strong"} intensity
+   */
+  _shakeGrid(intensity) {
+    const grid = document.querySelector(".reel-grid");
+    if (!grid) return;
+    const className = intensity === "strong" ? "grid-shake-strong" : "grid-shake-light";
+    grid.classList.remove("grid-shake-light", "grid-shake-strong");
+    void grid.offsetWidth;
+    grid.classList.add(className);
   }
 
   /**
@@ -67,7 +128,7 @@ export class AnimationEngine {
    * @param {number} scoreGained このtickで得た合計スコア（コンボなら合算値）
    */
   playScorePopup(results, scoreGained) {
-    if (!this._popupLayerEl || scoreGained <= 0) return;
+    if (!this._effectLayerEl || scoreGained <= 0) return;
 
     const indices = results.flatMap((r) => [r.a, r.b]);
     const points = indices.map((i) => cellCenterPercent(i));
@@ -80,7 +141,7 @@ export class AnimationEngine {
     popup.style.left = `${cx}%`;
     popup.style.top = `${cy}%`;
 
-    this._popupLayerEl.appendChild(popup);
+    this._effectLayerEl.appendChild(popup);
     setTimeout(() => popup.remove(), 900);
   }
 
@@ -99,13 +160,7 @@ export class AnimationEngine {
     this._bannerLayerEl.appendChild(banner);
     setTimeout(() => banner.remove(), 900);
 
-    // グリッド全体を軽く揺らして爽快感を強調する
-    const grid = document.querySelector(".reel-grid");
-    if (grid) {
-      grid.classList.remove("grid-shake");
-      void grid.offsetWidth;
-      grid.classList.add("grid-shake");
-    }
+    this._shakeGrid("strong");
   }
 
   /**
@@ -114,12 +169,17 @@ export class AnimationEngine {
    */
   resetAll(cellCount) {
     for (let i = 0; i < cellCount; i++) {
-      const el = this._getCellElement(i);
-      if (!el) continue;
-      el.classList.remove("cell-fixed", "cell-hit-flash", "cell-changing", "cell-pop");
+      const cellEl = this._getCellElement(i);
+      const charEl = this._getCharElement(i);
+      if (cellEl) {
+        cellEl.classList.remove("cell-fixed", "cell-hit-flash");
+      }
+      if (charEl) {
+        charEl.classList.remove("cell-changing", "cell-pop");
+      }
     }
-    if (this._popupLayerEl) {
-      this._popupLayerEl.innerHTML = "";
+    if (this._effectLayerEl) {
+      this._effectLayerEl.innerHTML = "";
     }
     if (this._bannerLayerEl) {
       this._bannerLayerEl.innerHTML = "";

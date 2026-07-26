@@ -9,9 +9,20 @@ const SPIN_DURATION_MS = 4000;
 // 所持金システム関連の定数
 const INITIAL_MONEY = 500; // 初期所持金(円)
 const SPIN_COST = 30; // 1スピンの消費額(円)
-// スコア→金額の換算レート。score(n) = 100*(2^n-1) は常に100の倍数になるため、
-// 100点=1円（1/100）とする。
-const SCORE_TO_MONEY_RATE = 1 / 100;
+// スコア→金額の換算レート。以前は100点=1円（1/100）としていたが、辞書を
+// 63,904語へ戻し受理抽選で成立数を調整したことでスコア水準が変わったため、
+// セッション継続スピン数（初期500円が尽きるまでのスピン回数）をシミュレーション
+// して再調整した。0.08（100点=8円）で平均31.3回・中央値31回・範囲23〜39回
+// （60セッション試行）となり、「運だけで極端に長続き/短命にならない」程度の
+// 適度なばらつきに収まることを確認した（test/verify_money_rate.js参照）。
+const SCORE_TO_MONEY_RATE = 0.08;
+
+// 辞書一致時に実際に成立とみなす確率（0〜1）。辞書はJMdict全件+SKK-JISYO.Lの
+// 63,904語というフルボリュームを使用しているため、そのままでは成立数が過多になる。
+// 200回のシミュレーションにより、0.04で「0個成立:10%、1〜3個:74%、4〜6個:16%、
+// 7個以上:0%、平均2.06個・最大5個」という目標に近い分布になることを確認した
+// （test/verify_balance.js参照）。
+const JUDGE_ACCEPTANCE_RATE = 0.04;
 
 /**
  * GameEngine
@@ -36,7 +47,9 @@ export class GameEngine {
     this.randomEngine = new RandomEngine(kanjiList);
     this.dictionaryEngine = new DictionaryEngine(jukugoEntries);
     this.reelEngine = new ReelEngine();
-    this.judgeEngine = new JudgeEngine(linePairs);
+    this.judgeEngine = new JudgeEngine(linePairs, {
+      acceptanceRate: JUDGE_ACCEPTANCE_RATE,
+    });
 
     this.totalScore = 0;
     this.spinning = false;
@@ -205,4 +218,10 @@ export class GameEngine {
   }
 }
 
-export { SPIN_DURATION_MS, INITIAL_MONEY, SPIN_COST, SCORE_TO_MONEY_RATE };
+export {
+  SPIN_DURATION_MS,
+  INITIAL_MONEY,
+  SPIN_COST,
+  SCORE_TO_MONEY_RATE,
+  JUDGE_ACCEPTANCE_RATE,
+};
