@@ -28,8 +28,8 @@ async function main() {
     root,
     gameEngine,
     audioEngine,
-    createAnimationEngine: (getCellElement, popupLayerEl, bannerLayerEl) =>
-      new AnimationEngine(getCellElement, popupLayerEl, bannerLayerEl),
+    createAnimationEngine: (getCharElement, getCellElement, effectLayerEl, bannerLayerEl) =>
+      new AnimationEngine(getCharElement, getCellElement, effectLayerEl, bannerLayerEl),
   });
 
   uiEngine.setDebugVisible(saveData.settings.debug);

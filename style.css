@@ -144,13 +144,15 @@ body {
   display: none;
 }
 
-.popup-layer {
+.popup-layer,
+.effect-layer {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   pointer-events: none;
   z-index: 3;
+  overflow: visible;
 }
 
 .banner-layer {
@@ -201,12 +203,18 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  border: 1px solid var(--color-washi-dark);
+  position: relative;
+  transition: background-color 0.3s ease;
+}
+
+.cell-char {
+  display: inline-block;
   font-family: var(--font-display);
   font-size: clamp(1.5rem, 5.2vw, 2.2rem);
-  border: 1px solid var(--color-washi-dark);
   color: var(--color-sumi-soft);
-  position: relative;
-  transition: color 0.15s ease, background-color 0.3s ease;
+  transition: color 0.15s ease;
+  will-change: transform, filter;
 }
 
 /* リール間の区切りを太い罫線で強調 */
@@ -231,10 +239,13 @@ body {
 }
 
 .cell-fixed {
-  color: var(--color-sumi);
-  font-weight: 600;
   background-color: rgba(166, 56, 44, 0.06);
   cursor: default;
+}
+
+.cell-fixed .cell-char {
+  color: var(--color-sumi);
+  font-weight: 600;
 }
 
 .cell-fixed::after {
@@ -261,23 +272,43 @@ body {
   }
 }
 
-/* 成立時、マス自体が一瞬「ボンッ」と拡大してから通常サイズへ戻る演出。
-   どのマス同士が組み合わさって成立したかは、対象マスすべてが同時に
-   ポップすることで直感的に把握できるようにしている。 */
+/* 成立時、マス内の「文字のみ」が勢いよく拡大してから戻るバウンス演出。
+   マスそのもの（外枠・レイアウト）には一切変化を加えない。
+   一瞬ぼかしてから鮮明に戻すことで、モーションブラーのような
+   「勢い」を表現している。どの文字同士が組み合わさって成立したかは、
+   対象の文字すべてが同時にポップすることで直感的に把握できる。 */
 .cell-pop {
-  animation: cell-pop 0.32s cubic-bezier(0.34, 1.56, 0.64, 1);
-  z-index: 2;
+  animation: cell-pop-scale 0.42s cubic-bezier(0.34, 1.56, 0.64, 1),
+    cell-pop-blur 0.42s ease-out;
 }
 
-@keyframes cell-pop {
+@keyframes cell-pop-scale {
   0% {
     transform: scale(1);
   }
-  45% {
-    transform: scale(1.35);
+  35% {
+    transform: scale(1.7);
+  }
+  60% {
+    transform: scale(0.92);
   }
   100% {
     transform: scale(1);
+  }
+}
+
+@keyframes cell-pop-blur {
+  0% {
+    filter: blur(0);
+  }
+  25% {
+    filter: blur(3px);
+  }
+  55% {
+    filter: blur(0);
+  }
+  100% {
+    filter: blur(0);
   }
 }
 
@@ -393,6 +424,54 @@ body {
   padding-top: 6px;
 }
 
+/* ---------- パーティクル・衝撃波 ---------- */
+
+.hit-particle {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  margin: -2.5px 0 0 -2.5px;
+  border-radius: 50%;
+  background: var(--color-shu);
+  box-shadow: 0 0 4px 1px rgba(166, 56, 44, 0.6);
+  pointer-events: none;
+  animation: particle-fly 0.5s cubic-bezier(0.2, 0.8, 0.4, 1) forwards;
+}
+
+@keyframes particle-fly {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--dx), var(--dy)) scale(0.3);
+  }
+}
+
+.shockwave-ring {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  border-radius: 50%;
+  border: 2px solid var(--color-shu);
+  box-shadow: 0 0 10px 1px rgba(166, 56, 44, 0.4);
+  pointer-events: none;
+  animation: shockwave-expand 0.5s ease-out forwards;
+}
+
+@keyframes shockwave-expand {
+  0% {
+    opacity: 0.9;
+    transform: scale(0.3);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(7);
+  }
+}
+
 /* ---------- スコアポップアップ（+100等） ---------- */
 
 .score-popup {
@@ -476,26 +555,46 @@ body {
   }
 }
 
-.grid-shake {
-  animation: grid-shake 0.35s ease-in-out;
+.grid-shake-light {
+  animation: grid-shake-light 0.28s ease-in-out;
 }
 
-@keyframes grid-shake {
+@keyframes grid-shake-light {
   0%,
   100% {
     transform: translateX(0);
   }
+  25% {
+    transform: translateX(-2px);
+  }
+  50% {
+    transform: translateX(2px);
+  }
+  75% {
+    transform: translateX(-1px);
+  }
+}
+
+.grid-shake-strong {
+  animation: grid-shake-strong 0.35s ease-in-out;
+}
+
+@keyframes grid-shake-strong {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
   20% {
-    transform: translateX(-4px);
+    transform: translate(-5px, 1px);
   }
   40% {
-    transform: translateX(4px);
+    transform: translate(5px, -1px);
   }
   60% {
-    transform: translateX(-3px);
+    transform: translate(-4px, 1px);
   }
   80% {
-    transform: translateX(3px);
+    transform: translate(4px, 0);
   }
 }
 
@@ -588,7 +687,10 @@ body {
   .cell-pop,
   .score-popup,
   .combo-banner,
-  .grid-shake {
+  .grid-shake-light,
+  .grid-shake-strong,
+  .hit-particle,
+  .shockwave-ring {
     animation: none !important;
   }
 }
